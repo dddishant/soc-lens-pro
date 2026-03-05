@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Activity, Globe, ShieldAlert, AlertTriangle, Search, Code, Copy, Check, ChevronDown, ChevronUp } from "lucide-react";
+import { Activity, Globe, ShieldAlert, AlertTriangle, Search, Code, Copy, Check, ChevronDown, ChevronUp, TrendingUp, Monitor, PieChart as PieIcon, Bell } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -61,6 +61,11 @@ const Dashboard = () => {
 
   const [jsonOpen, setJsonOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [openCharts, setOpenCharts] = useState<Record<string, boolean>>({});
+
+  const toggleChart = (key: string) => {
+    setOpenCharts(prev => ({ ...prev, [key]: !prev[key] }));
+  };
 
   const handleCopyJson = () => {
     navigator.clipboard.writeText(JSON.stringify(data, null, 2));
@@ -150,69 +155,109 @@ const Dashboard = () => {
           </Select>
         </div>
 
-        {/* Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <Card className="glass-card border-border/30">
-            <CardHeader><CardTitle className="text-base text-foreground">Traffic Over Time</CardTitle></CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={260}>
-                <LineChart data={data.analytics.traffic_over_time}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(215 20% 18%)" />
-                  <XAxis dataKey="time" stroke="hsl(215 15% 55%)" fontSize={12} />
-                  <YAxis stroke="hsl(215 15% 55%)" fontSize={12} />
-                  <Tooltip {...tooltipStyle} />
-                  <Line type="monotone" dataKey="count" stroke="#3be7ff" strokeWidth={2} dot={{ fill: "#3be7ff", r: 3 }} activeDot={{ r: 6, fill: "#3be7ff" }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+        {/* Chart Toggle Buttons */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+          {[
+            { key: "traffic", label: "Traffic Over Time", icon: TrendingUp },
+            { key: "ips", label: "Top IPs", icon: Monitor },
+            { key: "status", label: "HTTP Status Dist.", icon: PieIcon },
+            { key: "alerts", label: "Alerts by Rule", icon: Bell },
+          ].map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              onClick={() => toggleChart(key)}
+              className={`glass-card rounded-lg px-4 py-3 flex items-center gap-2.5 text-sm font-medium transition-all duration-300 border ${
+                openCharts[key]
+                  ? "border-primary/50 text-primary bg-primary/5 shadow-[0_0_15px_hsl(var(--primary)/0.15)]"
+                  : "border-border/30 text-muted-foreground hover:border-primary/30 hover:text-foreground"
+              }`}
+            >
+              <Icon className="h-4 w-4 shrink-0" />
+              <span className="truncate">{label}</span>
+              {openCharts[key] ? <ChevronUp className="h-3.5 w-3.5 ml-auto shrink-0" /> : <ChevronDown className="h-3.5 w-3.5 ml-auto shrink-0" />}
+            </button>
+          ))}
+        </div>
 
-          <Card className="glass-card border-border/30">
-            <CardHeader><CardTitle className="text-base text-foreground">Top IPs</CardTitle></CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={data.analytics.top_ips}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(215 20% 18%)" />
-                  <XAxis dataKey="ip" stroke="hsl(215 15% 55%)" fontSize={10} />
-                  <YAxis stroke="hsl(215 15% 55%)" fontSize={12} />
-                  <Tooltip {...tooltipStyle} />
-                  <Bar dataKey="count" fill="#3be7ff" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+        {/* Expandable Charts */}
+        <div className="space-y-4 mb-8">
+          {openCharts["traffic"] && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
+              <Card className="glass-card border-border/30">
+                <CardHeader><CardTitle className="text-base text-foreground">Traffic Over Time</CardTitle></CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <LineChart data={data.analytics.traffic_over_time}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(215 20% 18%)" />
+                      <XAxis dataKey="time" stroke="hsl(215 15% 55%)" fontSize={12} />
+                      <YAxis stroke="hsl(215 15% 55%)" fontSize={12} />
+                      <Tooltip {...tooltipStyle} />
+                      <Line type="monotone" dataKey="count" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ fill: "hsl(var(--primary))", r: 3 }} activeDot={{ r: 6, fill: "hsl(var(--primary))" }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
 
-          <Card className="glass-card border-border/30">
-            <CardHeader><CardTitle className="text-base text-foreground">HTTP Status Distribution</CardTitle></CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={260}>
-                <PieChart>
-                  <Pie data={data.analytics.status_distribution} dataKey="count" nameKey="status" cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={3} strokeWidth={0}>
-                    {data.analytics.status_distribution.map((_, i) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip {...tooltipStyle} />
-                  <Legend wrapperStyle={{ color: "hsl(215 15% 55%)", fontSize: 12 }} />
-                </PieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+          {openCharts["ips"] && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
+              <Card className="glass-card border-border/30">
+                <CardHeader><CardTitle className="text-base text-foreground">Top IPs</CardTitle></CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart data={data.analytics.top_ips}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(215 20% 18%)" />
+                      <XAxis dataKey="ip" stroke="hsl(215 15% 55%)" fontSize={10} />
+                      <YAxis stroke="hsl(215 15% 55%)" fontSize={12} />
+                      <Tooltip {...tooltipStyle} />
+                      <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
 
-          <Card className="glass-card border-border/30">
-            <CardHeader><CardTitle className="text-base text-foreground">Alerts by Rule</CardTitle></CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={data.analytics.alerts_by_rule} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(215 20% 18%)" />
-                  <XAxis type="number" stroke="hsl(215 15% 55%)" fontSize={12} />
-                  <YAxis dataKey="rule" type="category" stroke="hsl(215 15% 55%)" fontSize={10} width={120} />
-                  <Tooltip {...tooltipStyle} />
-                  <Bar dataKey="count" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+          {openCharts["status"] && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
+              <Card className="glass-card border-border/30">
+                <CardHeader><CardTitle className="text-base text-foreground">HTTP Status Distribution</CardTitle></CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <PieChart>
+                      <Pie data={data.analytics.status_distribution} dataKey="count" nameKey="status" cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={3} strokeWidth={0}>
+                        {data.analytics.status_distribution.map((_, i) => (
+                          <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip {...tooltipStyle} />
+                      <Legend wrapperStyle={{ color: "hsl(215 15% 55%)", fontSize: 12 }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
+          {openCharts["alerts"] && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
+              <Card className="glass-card border-border/30">
+                <CardHeader><CardTitle className="text-base text-foreground">Alerts by Rule</CardTitle></CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart data={data.analytics.alerts_by_rule} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(215 20% 18%)" />
+                      <XAxis type="number" stroke="hsl(215 15% 55%)" fontSize={12} />
+                      <YAxis dataKey="rule" type="category" stroke="hsl(215 15% 55%)" fontSize={10} width={120} />
+                      <Tooltip {...tooltipStyle} />
+                      <Bar dataKey="count" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
         </div>
 
         {/* Events Table */}
