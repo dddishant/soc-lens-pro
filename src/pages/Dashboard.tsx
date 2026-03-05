@@ -1,8 +1,9 @@
 import { useState, useMemo } from "react";
-import { Activity, Globe, ShieldAlert, AlertTriangle, Search, Code, Copy, Check, ChevronDown, ChevronUp, TrendingUp, Monitor, PieChart as PieIcon, Bell } from "lucide-react";
+import { Activity, Globe, ShieldAlert, AlertTriangle, Search, Code, Copy, Check, ChevronDown, ChevronUp, TrendingUp, Monitor, PieChart as PieIcon, Bell, Info } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { useAnalysis, DEMO_DATA } from "@/context/AnalysisContext";
@@ -47,11 +48,38 @@ const Dashboard = () => {
   const pagedEvents = filteredEvents.slice((page - 1) * perPage, page * perPage);
   const totalPages = Math.ceil(filteredEvents.length / perPage);
 
+  const criticalCount = data.alerts.filter(a => a.severity === "critical").length;
+  const highCount = data.alerts.filter(a => a.severity === "high").length;
+
   const kpis = [
-    { label: "Total Events", value: data.events_preview.length.toLocaleString(), icon: Activity, color: "text-primary" },
-    { label: "Unique IPs", value: uniqueIps.length.toString(), icon: Globe, color: "text-purple-400" },
-    { label: "Risk Level", value: data.risk, icon: ShieldAlert, color: riskColors[data.risk] || "text-primary" },
-    { label: "Alert Count", value: data.alerts.length.toString(), icon: AlertTriangle, color: "text-orange-400" },
+    {
+      label: "Total Events",
+      value: data.events_preview.length.toLocaleString(),
+      icon: Activity,
+      color: "text-primary",
+      info: `Counted from events_preview array.\n• Total log entries parsed: ${data.events_preview.length}\n• Unique timestamps: ${new Set(data.events_preview.map(e => e.timestamp)).size}\n• Sources: uploaded log file`,
+    },
+    {
+      label: "Unique IPs",
+      value: uniqueIps.length.toString(),
+      icon: Globe,
+      color: "text-purple-400",
+      info: `Distinct source IPs extracted from all events.\n• ${uniqueIps.slice(0, 5).join(", ")}${uniqueIps.length > 5 ? ` +${uniqueIps.length - 5} more` : ""}\n• Method: Set() de-duplication on event IP field`,
+    },
+    {
+      label: "Risk Level",
+      value: data.risk,
+      icon: ShieldAlert,
+      color: riskColors[data.risk] || "text-primary",
+      info: `Risk assessed based on alert severity distribution.\n• Critical alerts: ${criticalCount}\n• High alerts: ${highCount}\n• Total alerts: ${data.alerts.length}\n• Rule: Critical ≥1 → "Critical", High ≥2 → "High", else Medium/Low`,
+    },
+    {
+      label: "Alert Count",
+      value: data.alerts.length.toString(),
+      icon: AlertTriangle,
+      color: "text-orange-400",
+      info: `Total security alerts triggered by rule engine.\n• Critical: ${criticalCount}\n• High: ${highCount}\n• Medium: ${data.alerts.filter(a => a.severity === "medium").length}\n• Low: ${data.alerts.filter(a => a.severity === "low").length}`,
+    },
   ];
 
   const tooltipStyle = {
@@ -111,17 +139,28 @@ const Dashboard = () => {
 
         {/* KPIs */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {kpis.map(({ label, value, icon: Icon, color }, i) => (
+          {kpis.map(({ label, value, icon: Icon, color, info }, i) => (
             <motion.div key={label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
               <Card className="glass-card border-border/30 hover:border-primary/30 transition-all duration-300">
-                <CardContent className="flex items-center gap-4 p-5">
+                <CardContent className="flex items-center gap-4 p-5 relative">
                   <div className="h-11 w-11 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                     <Icon className={`h-5 w-5 ${color}`} />
                   </div>
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <p className="text-sm text-muted-foreground">{label}</p>
                     <p className={`text-2xl font-bold ${color}`}>{value}</p>
                   </div>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className="absolute top-3 right-3 p-1 rounded-full hover:bg-secondary/50 text-muted-foreground hover:text-foreground transition-colors">
+                        <Info className="h-3.5 w-3.5" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-72 bg-card border-border/50 text-sm" side="bottom" align="end">
+                      <p className="font-semibold text-foreground mb-2">{label} — Calculation</p>
+                      <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-mono leading-relaxed">{info}</pre>
+                    </PopoverContent>
+                  </Popover>
                 </CardContent>
               </Card>
             </motion.div>
