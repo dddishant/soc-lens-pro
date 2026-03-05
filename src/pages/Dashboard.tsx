@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Activity, Globe, ShieldAlert, AlertTriangle, Search } from "lucide-react";
+import { Activity, Globe, ShieldAlert, AlertTriangle, Search, Code, Copy, Check, ChevronDown, ChevronUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -59,10 +59,46 @@ const Dashboard = () => {
     labelStyle: { color: "hsl(215 15% 55%)" },
   };
 
+  const [jsonOpen, setJsonOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyJson = () => {
+    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
       <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Raw JSON Viewer */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card rounded-xl mb-6 overflow-hidden">
+          <button
+            onClick={() => setJsonOpen(!jsonOpen)}
+            className="w-full flex items-center justify-between px-4 py-3 hover:bg-secondary/20 transition-colors"
+          >
+            <div className="flex items-center gap-2 text-sm font-mono text-primary">
+              <Code className="h-4 w-4" />
+              <span>Raw JSON Response</span>
+            </div>
+            {jsonOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+          </button>
+          {jsonOpen && (
+            <div className="relative border-t border-border/30">
+              <button
+                onClick={handleCopyJson}
+                className="absolute top-2 right-2 p-1.5 rounded-md bg-secondary/50 hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors z-10"
+              >
+                {copied ? <Check className="h-3.5 w-3.5 text-green-400" /> : <Copy className="h-3.5 w-3.5" />}
+              </button>
+              <pre className="p-4 text-xs font-mono text-foreground/80 overflow-auto max-h-80 scrollbar-thin">
+                {JSON.stringify(data, null, 2)}
+              </pre>
+            </div>
+          )}
+        </motion.div>
+
         {/* Summary */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card rounded-xl p-4 mb-8">
           <p className="text-muted-foreground text-sm">{data.summary}</p>
